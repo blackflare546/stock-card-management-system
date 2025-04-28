@@ -1,13 +1,26 @@
-"use client"
+"use client";
 
-import { useState, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Eye, X } from "lucide-react"
-import { parse, getMonth, getYear } from "date-fns"
-import { PreviewModal } from "./preview-modal"
+import { useState, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Eye, X } from "lucide-react";
+import { parse, getMonth, getYear } from "date-fns";
+import { PreviewModal } from "./preview-modal";
 
 // Mock data - in a real app, this would come from a database
 const mockItems = [
@@ -76,7 +89,7 @@ const mockItems = [
     ],
   },
   // Other mock items...
-]
+];
 
 // Month names for the dropdown
 const monthNames = [
@@ -92,57 +105,59 @@ const monthNames = [
   "October",
   "November",
   "December",
-]
+];
 
 export default function StockCardView({ id }: { id: string }) {
   // Find the item with the matching ID
-  const item = mockItems.find((item) => item.id === id)
-  const [selectedMonth, setSelectedMonth] = useState<string>("all")
-  const [selectedYear, setSelectedYear] = useState<string>("all")
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const item = mockItems.find((item) => item.id === id);
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const years = useMemo(() => {
-    const uniqueYears = new Set<string>()
+    const uniqueYears = new Set<string>();
 
     mockItems.forEach((item) => {
       if (item) {
         item.transactions.forEach((transaction) => {
-          const date = parse(transaction.date, "yyyy-MM-dd", new Date())
-          const year = getYear(date).toString()
-          uniqueYears.add(year)
-        })
+          const date = parse(transaction.date, "yyyy-MM-dd", new Date());
+          const year = getYear(date).toString();
+          uniqueYears.add(year);
+        });
       }
-    })
+    });
 
-    return Array.from(uniqueYears).sort((a, b) => b.localeCompare(a)) // Sort descending (newest first)
-  }, [])
+    return Array.from(uniqueYears).sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
+  }, []);
 
   // Filter transactions by selected month and year
   const filteredTransactions = useMemo(() => {
-    if (!item) return []
+    if (!item) return [];
     return item.transactions.filter((transaction) => {
-      const date = parse(transaction.date, "yyyy-MM-dd", new Date())
-      const transactionMonth = (getMonth(date) + 1).toString() // +1 because getMonth is 0-indexed
-      const transactionYear = getYear(date).toString()
+      const date = parse(transaction.date, "yyyy-MM-dd", new Date());
+      const transactionMonth = (getMonth(date) + 1).toString(); // +1 because getMonth is 0-indexed
+      const transactionYear = getYear(date).toString();
 
-      const monthMatches = selectedMonth === "all" || transactionMonth === selectedMonth
-      const yearMatches = selectedYear === "all" || transactionYear === selectedYear
+      const monthMatches =
+        selectedMonth === "all" || transactionMonth === selectedMonth;
+      const yearMatches =
+        selectedYear === "all" || transactionYear === selectedYear;
 
-      return monthMatches && yearMatches
-    })
-  }, [item, selectedMonth, selectedYear])
+      return monthMatches && yearMatches;
+    });
+  }, [item, selectedMonth, selectedYear]);
 
   // Clear all filters
   const clearFilters = () => {
-    setSelectedMonth("all")
-    setSelectedYear("all")
-  }
+    setSelectedMonth("all");
+    setSelectedYear("all");
+  };
 
   // Check if any filter is active
-  const isFilterActive = selectedMonth !== "all" || selectedYear !== "all"
+  const isFilterActive = selectedMonth !== "all" || selectedYear !== "all";
 
   if (!item) {
-    return <div className="text-center py-8">Stock card not found</div>
+    return <div className="text-center py-8">Stock card not found</div>;
   }
 
   return (
@@ -174,7 +189,9 @@ export default function StockCardView({ id }: { id: string }) {
                 <p className="font-medium">{item.description}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Unit of Measurement:</p>
+                <p className="text-sm text-muted-foreground">
+                  Unit of Measurement:
+                </p>
                 <p className="font-medium">{item.unitOfMeasurement}</p>
               </div>
             </div>
@@ -188,7 +205,9 @@ export default function StockCardView({ id }: { id: string }) {
                 <p className="font-medium">{item.reorderPoint}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Current Balance:</p>
+                <p className="text-sm text-muted-foreground">
+                  Current Balance:
+                </p>
                 <p className="font-medium">{item.currentBalance}</p>
               </div>
             </div>
@@ -237,7 +256,12 @@ export default function StockCardView({ id }: { id: string }) {
             </Select>
 
             {isFilterActive && (
-              <Button variant="outline" size="icon" onClick={clearFilters} title="Clear filters">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={clearFilters}
+                title="Clear filters"
+              >
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -254,7 +278,9 @@ export default function StockCardView({ id }: { id: string }) {
                   <TableHead className="text-center">Issue Qty.</TableHead>
                   <TableHead>Office</TableHead>
                   <TableHead className="text-center">Balance Qty.</TableHead>
-                  <TableHead className="text-center">No. of Days to Consume</TableHead>
+                  <TableHead className="text-center">
+                    No. of Days to Consume
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -263,11 +289,19 @@ export default function StockCardView({ id }: { id: string }) {
                     <TableRow key={transaction.id}>
                       <TableCell>{transaction.date}</TableCell>
                       <TableCell>{transaction.reference}</TableCell>
-                      <TableCell className="text-center">{transaction.receiptQty}</TableCell>
-                      <TableCell className="text-center">{transaction.issueQty}</TableCell>
+                      <TableCell className="text-center">
+                        {transaction.receiptQty}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {transaction.issueQty}
+                      </TableCell>
                       <TableCell>{transaction.issueOffice}</TableCell>
-                      <TableCell className="text-center">{transaction.balanceQty}</TableCell>
-                      <TableCell className="text-center">{transaction.daysToConsume}</TableCell>
+                      <TableCell className="text-center">
+                        {transaction.balanceQty}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {transaction.daysToConsume}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -285,8 +319,13 @@ export default function StockCardView({ id }: { id: string }) {
 
       {/* Preview Modal */}
       {isPreviewOpen && (
-        <PreviewModal isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} stockCardData={item} />
+        <PreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          stockCardData={item}
+          filteredTransactions={filteredTransactions}
+        />
       )}
     </div>
-  )
+  );
 }

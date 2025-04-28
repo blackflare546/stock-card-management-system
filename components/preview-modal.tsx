@@ -8,10 +8,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, X } from "lucide-react";
+import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+
+interface Transaction {
+  id: string;
+  date: string;
+  reference: string;
+  receiptQty: number;
+  issueQty: number;
+  issueOffice: string;
+  balanceQty: number;
+  daysToConsume: number;
+}
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -25,23 +36,15 @@ interface PreviewModalProps {
     description: string;
     unitOfMeasurement: string;
     reorderPoint: string;
-    transactions: {
-      id: string;
-      date: string;
-      reference: string;
-      receiptQty: number;
-      issueQty: number;
-      issueOffice: string;
-      balanceQty: number;
-      daysToConsume: number;
-    }[];
   };
+  filteredTransactions: Transaction[]; // 🆕 added prop
 }
 
 export function PreviewModal({
   isOpen,
   onClose,
   stockCardData,
+  filteredTransactions,
 }: PreviewModalProps) {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -73,12 +76,12 @@ export function PreviewModal({
 
       try {
         const canvas = await html2canvas(clone, {
-          scale: 3, // higher = sharper
+          scale: 3,
           useCORS: true,
           scrollX: 0,
           scrollY: 0,
           logging: false,
-          backgroundColor: "#ffffff", // ensure white bg
+          backgroundColor: "#ffffff",
         });
 
         const imgData = canvas.toDataURL("image/png");
@@ -115,8 +118,8 @@ export function PreviewModal({
   };
 
   const getEmptyRowsCount = () => {
-    const minRows = 25; // Ensure enough rows to make table extend properly
-    const currentRows = stockCardData.transactions.length;
+    const minRows = 25;
+    const currentRows = filteredTransactions.length; // 🛠 use filtered
     return Math.max(0, minRows - currentRows);
   };
 
@@ -132,7 +135,7 @@ export function PreviewModal({
         {/* Stock Card Preview */}
         <div
           id="preview-stock-card"
-          className=" mx-auto"
+          className="mx-auto"
           style={{
             width: "190mm",
             height: "277mm",
@@ -146,16 +149,16 @@ export function PreviewModal({
         >
           <div className="text-right italic text-[12px]">Appendix 58</div>
 
-          <div className="text-center font-bold my-2 text-lg ">STOCK CARD</div>
+          <div className="text-center font-bold my-2 text-lg">STOCK CARD</div>
 
           <div className="flex justify-between text-[12px] mb-2 mt-5">
             <div>
               <span className="font-bold">Entity Name:</span>{" "}
-              <u> {stockCardData.entityName} </u>
+              <u>{stockCardData.entityName}</u>
             </div>
             <div>
               <span className="font-bold">Fund Cluster:</span>{" "}
-              <u> {stockCardData.fundCluster} </u>
+              <u>{stockCardData.fundCluster}</u>
             </div>
           </div>
 
@@ -163,26 +166,26 @@ export function PreviewModal({
             <tbody>
               <tr>
                 <td className="border border-black p-2 w-1/2">
-                  <span className="font-bold">Item :</span> {stockCardData.item}
+                  <span className="font-bold">Item:</span> {stockCardData.item}
                 </td>
                 <td className="border border-black p-2 w-1/2">
-                  <span className="font-bold">Stock No. :</span>{" "}
+                  <span className="font-bold">Stock No.:</span>{" "}
                   {stockCardData.stockNo}
                 </td>
               </tr>
               <tr>
                 <td className="border border-black p-2">
-                  <span className="font-bold">Description :</span>{" "}
+                  <span className="font-bold">Description:</span>{" "}
                   {stockCardData.description}
                 </td>
                 <td className="border border-black p-2">
-                  <span className="font-bold">Re-order Point :</span>{" "}
+                  <span className="font-bold">Re-order Point:</span>{" "}
                   {stockCardData.reorderPoint}
                 </td>
               </tr>
               <tr>
                 <td className="border border-black p-2">
-                  <span className="font-bold">Unit of Measurement :</span>{" "}
+                  <span className="font-bold">Unit of Measurement:</span>{" "}
                   {stockCardData.unitOfMeasurement}
                 </td>
                 <td className="border border-black p-2"></td>
@@ -218,7 +221,7 @@ export function PreviewModal({
                 </tr>
               </thead>
               <tbody>
-                {stockCardData.transactions.map((t) => (
+                {filteredTransactions.map((t) => (
                   <tr key={t.id}>
                     <td className="border border-black p-1 text-center align-middle">
                       {t.date}
@@ -247,27 +250,13 @@ export function PreviewModal({
                 {/* Empty rows */}
                 {Array.from({ length: getEmptyRowsCount() }).map((_, i) => (
                   <tr key={`empty-${i}`}>
-                    <td className="border border-black p-1 text-center align-middle">
-                      &nbsp;
-                    </td>
-                    <td className="border border-black p-1 text-center align-middle">
-                      &nbsp;
-                    </td>
-                    <td className="border border-black p-1 text-center align-middle">
-                      &nbsp;
-                    </td>
-                    <td className="border border-black p-1 text-center align-middle">
-                      &nbsp;
-                    </td>
-                    <td className="border border-black p-1 text-center align-middle">
-                      &nbsp;
-                    </td>
-                    <td className="border border-black p-1 text-center align-middle">
-                      &nbsp;
-                    </td>
-                    <td className="border border-black p-1 text-center align-middle">
-                      &nbsp;
-                    </td>
+                    <td className="border border-black p-1">&nbsp;</td>
+                    <td className="border border-black p-1">&nbsp;</td>
+                    <td className="border border-black p-1">&nbsp;</td>
+                    <td className="border border-black p-1">&nbsp;</td>
+                    <td className="border border-black p-1">&nbsp;</td>
+                    <td className="border border-black p-1">&nbsp;</td>
+                    <td className="border border-black p-1">&nbsp;</td>
                   </tr>
                 ))}
               </tbody>
