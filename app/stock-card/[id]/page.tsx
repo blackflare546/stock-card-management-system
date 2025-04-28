@@ -5,12 +5,28 @@ import { ArrowLeft, Edit } from "lucide-react"
 import Link from "next/link"
 import StockCardView from "@/components/stock-card-view"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function StockCardPage({ params }: { params: { id: string } }) {
   const router = useRouter()
+  const [id, setId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchParams = async () => {
+      // Using React.use() to unwrap params
+      const resolvedParams = await params
+      setId(resolvedParams.id)
+    }
+
+    fetchParams()
+  }, [params])
 
   const handleBack = () => {
     router.push("/")
+  }
+
+  if (!id) {
+    return <div>Loading...</div> // or any loading indicator you prefer
   }
 
   return (
@@ -21,7 +37,7 @@ export default function StockCardPage({ params }: { params: { id: string } }) {
         </Button>
         <h1 className="text-3xl font-bold">Stock Card Details</h1>
         <div className="ml-auto">
-          <Link href={`/stock-card/${params.id}/edit`}>
+          <Link href={`/stock-card/${id}/edit`}>
             <Button>
               <Edit className="mr-2 h-4 w-4" />
               Edit Stock Card
@@ -30,7 +46,7 @@ export default function StockCardPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      <StockCardView id={params.id} />
+      <StockCardView id={id} />
     </main>
   )
 }

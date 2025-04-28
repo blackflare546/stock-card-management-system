@@ -1,33 +1,54 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
-import StockCardForm from "@/components/stock-card-form"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import StockCardForm from "@/components/stock-card-form";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function EditStockCardPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const [referrer, setReferrer] = useState<string>("/")
+export default function EditStockCardPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const router = useRouter();
+  const [referrer, setReferrer] = useState<string>("/");
+  const [id, setId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get the referrer from the document if available
-    if (document.referrer) {
-      const url = new URL(document.referrer)
-      const path = url.pathname
+    const fetchParams = async () => {
+      // Unwrap params using React.use()
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+    };
 
-      // Check if the referrer is from our app
-      if (path) {
-        // If the referrer is the home page or the details page, use that
-        if (path === "/" || path === `/stock-card/${params.id}`) {
-          setReferrer(path)
+    fetchParams();
+  }, [params]);
+
+  useEffect(() => {
+    if (id) {
+      // Get the referrer from the document if available
+      if (document.referrer) {
+        const url = new URL(document.referrer);
+        const path = url.pathname;
+
+        // Check if the referrer is from our app
+        if (path) {
+          // If the referrer is the home page or the details page, use that
+          if (path === "/" || path === `/stock-card/${id}`) {
+            setReferrer(path);
+          }
         }
       }
     }
-  }, [params.id])
+  }, [id]);
 
   const handleBack = () => {
-    router.push(referrer)
+    router.push(referrer);
+  };
+
+  if (!id) {
+    return <div>Loading...</div>; // or any loading indicator you prefer
   }
 
   return (
@@ -39,7 +60,7 @@ export default function EditStockCardPage({ params }: { params: { id: string } }
         <h1 className="text-3xl font-bold">Edit Stock Card</h1>
       </div>
 
-      <StockCardForm id={params.id} />
+      <StockCardForm id={id} />
     </main>
-  )
+  );
 }
