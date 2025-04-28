@@ -126,16 +126,13 @@ export function PreviewModal({
         <DialogHeader>
           <DialogTitle className="flex justify-between items-center">
             <span>Stock Card Preview</span>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
           </DialogTitle>
         </DialogHeader>
 
         {/* Stock Card Preview */}
         <div
           id="preview-stock-card"
-          className="bg-white p-4 border rounded mx-auto"
+          className=" mx-auto"
           style={{
             width: "190mm",
             height: "277mm",
