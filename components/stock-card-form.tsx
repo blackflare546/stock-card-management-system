@@ -1,37 +1,45 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { PlusCircle, Save, Trash2 } from "lucide-react"
-import { format } from "date-fns"
-import { useRouter } from "next/navigation"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabaseClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PlusCircle, Save, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 interface ItemHeader {
-  entityName: string
-  fundCluster: string
-  item: string
-  stockNo: string
-  description: string
-  unitOfMeasurement: string
-  reorderPoint: string
+  entityName: string;
+  fundCluster: string;
+  item: string;
+  stockNo: string;
+  description: string;
+  unitOfMeasurement: string;
+  reorderPoint: string;
 }
 
 interface ItemTransaction {
-  id: string
-  date: string
-  reference: string
-  receiptQty: number
-  issueQty: number
-  issueOffice: string
-  balanceQty: number
-  daysToConsume: number
+  id: string;
+  date: string;
+  reference: string;
+  receiptQty: number;
+  issueQty: number;
+  issueOffice: string;
+  balanceQty: number;
+  daysToConsume: number;
 }
 
 // Mock data - in a real app, this would come from a database
@@ -81,12 +89,12 @@ const mockItems = [
     ],
   },
   // Other mock items...
-]
+];
 
 export default function StockCardForm({ id }: { id?: string }) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const isEditMode = !!id
+  const router = useRouter();
+  const { toast } = useToast();
+  const isEditMode = !!id;
 
   const [itemHeader, setItemHeader] = useState<ItemHeader>({
     entityName: "",
@@ -96,10 +104,12 @@ export default function StockCardForm({ id }: { id?: string }) {
     description: "",
     unitOfMeasurement: "",
     reorderPoint: "",
-  })
+  });
 
-  const [transactions, setTransactions] = useState<ItemTransaction[]>([])
-  const [newTransaction, setNewTransaction] = useState<Omit<ItemTransaction, "id">>({
+  const [transactions, setTransactions] = useState<ItemTransaction[]>([]);
+  const [newTransaction, setNewTransaction] = useState<
+    Omit<ItemTransaction, "id">
+  >({
     date: format(new Date(), "yyyy-MM-dd"),
     reference: "",
     receiptQty: 0,
@@ -107,14 +117,14 @@ export default function StockCardForm({ id }: { id?: string }) {
     issueOffice: "",
     balanceQty: 0,
     daysToConsume: 0,
-  })
+  });
 
-  const [isSaving, setIsSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load data if in edit mode
   useEffect(() => {
     if (isEditMode) {
-      const item = mockItems.find((item) => item.id === id)
+      const item = mockItems.find((item) => item.id === id);
       if (item) {
         setItemHeader({
           entityName: item.entityName,
@@ -124,32 +134,37 @@ export default function StockCardForm({ id }: { id?: string }) {
           description: item.description,
           unitOfMeasurement: item.unitOfMeasurement,
           reorderPoint: item.reorderPoint,
-        })
-        setTransactions(item.transactions)
+        });
+        setTransactions(item.transactions);
       }
     }
-  }, [id, isEditMode])
+  }, [id, isEditMode]);
 
   const handleHeaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setItemHeader((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setItemHeader((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleTransactionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setNewTransaction((prev) => ({
       ...prev,
-      [name]: name === "date" ? value : name === "reference" || name === "issueOffice" ? value : Number(value),
-    }))
-  }
+      [name]:
+        name === "date"
+          ? value
+          : name === "reference" || name === "issueOffice"
+          ? value
+          : Number(value),
+    }));
+  };
 
   const addTransaction = () => {
     const transaction: ItemTransaction = {
       id: Date.now().toString(),
       ...newTransaction,
-    }
+    };
 
-    setTransactions([...transactions, transaction])
+    setTransactions([...transactions, transaction]);
 
     // Reset form except for date
     setNewTransaction({
@@ -160,66 +175,102 @@ export default function StockCardForm({ id }: { id?: string }) {
       issueOffice: "",
       balanceQty: 0,
       daysToConsume: 0,
-    })
+    });
 
     toast({
       title: "Transaction added",
       description: "The transaction has been added to the stock card.",
-    })
-  }
+    });
+  };
 
   const removeTransaction = (id: string) => {
     // Remove the transaction with the given ID
-    const updatedTransactions = transactions.filter((t) => t.id !== id)
-    setTransactions(updatedTransactions)
+    const updatedTransactions = transactions.filter((t) => t.id !== id);
+    setTransactions(updatedTransactions);
 
     toast({
       title: "Transaction removed",
       description: "The transaction has been removed from the stock card.",
-    })
-  }
+    });
+  };
 
   const saveStockCard = async () => {
-    // Validate required fields
     if (!itemHeader.item) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
-      // In a real application, this would save to a database
-      // Simulate API call with a delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (isEditMode) {
+        // Update logic (not included yet)
+        // I'll show you later if needed.
+      } else {
+        // 1. Insert into stock_cards
+        const { data: cardData, error: cardError } = await supabase
+          .from("stock_cards")
+          .insert([
+            {
+              entity_name: itemHeader.entityName,
+              fund_cluster: itemHeader.fundCluster,
+              item: itemHeader.item,
+              stock_no: itemHeader.stockNo,
+              description: itemHeader.description,
+              unit_of_measurement: itemHeader.unitOfMeasurement,
+              reorder_point: itemHeader.reorderPoint,
+            },
+          ])
+          .select()
+          .single();
 
-      console.log("Saving stock card:", { itemHeader, transactions })
+        if (cardError) throw cardError;
 
-      toast({
-        title: isEditMode ? "Stock card updated" : "Stock card created",
-        description: isEditMode
-          ? `${itemHeader.item} has been successfully updated.`
-          : `${itemHeader.item} has been successfully added to your inventory.`,
-      })
+        const stockCardId = cardData.id;
 
-      // Always navigate back to the home page after saving
-      setTimeout(() => {
-        router.push("/")
-      }, 500)
-    } catch (error) {
+        // 2. Insert all transactions linked to this stock card
+        const { error: transactionError } = await supabase
+          .from("stock_transactions")
+          .insert(
+            transactions.map((t) => ({
+              stock_card_id: stockCardId,
+              date: t.date,
+              reference: t.reference,
+              receipt_qty: t.receiptQty,
+              issue_qty: t.issueQty,
+              issue_office: t.issueOffice,
+              balance_qty: t.balanceQty,
+              days_to_consume: t.daysToConsume,
+            }))
+          );
+
+        if (transactionError) throw transactionError;
+
+        toast({
+          title: "Stock card created",
+          description: `${itemHeader.item} has been successfully added to your inventory.`,
+        });
+
+        setTimeout(() => {
+          router.push("/");
+        }, 500);
+      }
+    } catch (error: any) {
+      console.error(error);
       toast({
         title: "Error",
-        description: "There was a problem saving the stock card. Please try again.",
+        description:
+          error.message ?? "There was a problem saving the stock card.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-8">
@@ -231,11 +282,21 @@ export default function StockCardForm({ id }: { id?: string }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-2">
               <Label htmlFor="entityName">Entity Name:</Label>
-              <Input id="entityName" name="entityName" value={itemHeader.entityName} onChange={handleHeaderChange} />
+              <Input
+                id="entityName"
+                name="entityName"
+                value={itemHeader.entityName}
+                onChange={handleHeaderChange}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="fundCluster">Fund Cluster:</Label>
-              <Input id="fundCluster" name="fundCluster" value={itemHeader.fundCluster} onChange={handleHeaderChange} />
+              <Input
+                id="fundCluster"
+                name="fundCluster"
+                value={itemHeader.fundCluster}
+                onChange={handleHeaderChange}
+              />
             </div>
           </div>
 
@@ -245,7 +306,13 @@ export default function StockCardForm({ id }: { id?: string }) {
                 <Label htmlFor="item">
                   Item:<span className="text-red-500">*</span>
                 </Label>
-                <Input id="item" name="item" value={itemHeader.item} onChange={handleHeaderChange} required />
+                <Input
+                  id="item"
+                  name="item"
+                  value={itemHeader.item}
+                  onChange={handleHeaderChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description:</Label>
@@ -269,7 +336,12 @@ export default function StockCardForm({ id }: { id?: string }) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="stockNo">Stock No.:</Label>
-                <Input id="stockNo" name="stockNo" value={itemHeader.stockNo} onChange={handleHeaderChange} />
+                <Input
+                  id="stockNo"
+                  name="stockNo"
+                  value={itemHeader.stockNo}
+                  onChange={handleHeaderChange}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="reorderPoint">Re-order Point:</Label>
@@ -300,7 +372,9 @@ export default function StockCardForm({ id }: { id?: string }) {
                   <TableHead className="text-center">Issue Qty.</TableHead>
                   <TableHead>Office</TableHead>
                   <TableHead className="text-center">Balance Qty.</TableHead>
-                  <TableHead className="text-center">No. of Days to Consume</TableHead>
+                  <TableHead className="text-center">
+                    No. of Days to Consume
+                  </TableHead>
                   <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -309,13 +383,25 @@ export default function StockCardForm({ id }: { id?: string }) {
                   <TableRow key={transaction.id}>
                     <TableCell>{transaction.date}</TableCell>
                     <TableCell>{transaction.reference}</TableCell>
-                    <TableCell className="text-center">{transaction.receiptQty}</TableCell>
-                    <TableCell className="text-center">{transaction.issueQty}</TableCell>
-                    <TableCell>{transaction.issueOffice}</TableCell>
-                    <TableCell className="text-center">{transaction.balanceQty}</TableCell>
-                    <TableCell className="text-center">{transaction.daysToConsume}</TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="icon" onClick={() => removeTransaction(transaction.id)}>
+                      {transaction.receiptQty}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {transaction.issueQty}
+                    </TableCell>
+                    <TableCell>{transaction.issueOffice}</TableCell>
+                    <TableCell className="text-center">
+                      {transaction.balanceQty}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {transaction.daysToConsume}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeTransaction(transaction.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -323,7 +409,12 @@ export default function StockCardForm({ id }: { id?: string }) {
                 ))}
                 <TableRow>
                   <TableCell>
-                    <Input type="date" name="date" value={newTransaction.date} onChange={handleTransactionChange} />
+                    <Input
+                      type="date"
+                      name="date"
+                      value={newTransaction.date}
+                      onChange={handleTransactionChange}
+                    />
                   </TableCell>
                   <TableCell>
                     <Input
@@ -378,7 +469,11 @@ export default function StockCardForm({ id }: { id?: string }) {
                     />
                   </TableCell>
                   <TableCell className="text-center">
-                    <Button variant="ghost" size="icon" onClick={addTransaction}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={addTransaction}
+                    >
                       <PlusCircle className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -390,11 +485,15 @@ export default function StockCardForm({ id }: { id?: string }) {
           <div className="mt-6 flex justify-end">
             <Button onClick={saveStockCard} disabled={isSaving}>
               <Save className="mr-2 h-4 w-4" />
-              {isSaving ? "Saving..." : isEditMode ? "Update Stock Card" : "Save Stock Card"}
+              {isSaving
+                ? "Saving..."
+                : isEditMode
+                ? "Update Stock Card"
+                : "Save Stock Card"}
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
