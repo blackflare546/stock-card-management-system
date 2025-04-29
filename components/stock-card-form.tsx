@@ -34,6 +34,8 @@ interface ItemHeader {
 interface ItemTransaction {
   id: string;
   date: string;
+  month: string;
+  year: string;
   reference: string;
   receiptQty: number;
   issueQty: number;
@@ -58,10 +60,13 @@ export default function StockCardForm({ id }: { id?: string }) {
   });
 
   const [transactions, setTransactions] = useState<ItemTransaction[]>([]);
+
   const [newTransaction, setNewTransaction] = useState<
     Omit<ItemTransaction, "id">
   >({
     date: format(new Date(), "yyyy-MM-dd"),
+    month: "January",
+    year: new Date().getFullYear().toString(),
     reference: "",
     receiptQty: 0,
     issueQty: 0,
@@ -126,6 +131,8 @@ export default function StockCardForm({ id }: { id?: string }) {
               issueOffice: t.issue_office,
               balanceQty: t.balance_qty,
               daysToConsume: t.days_to_consume,
+              month: t.month,
+              year: t.year,
             }))
           );
         }
@@ -140,16 +147,19 @@ export default function StockCardForm({ id }: { id?: string }) {
     setItemHeader((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleTransactionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTransactionChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setNewTransaction((prev) => ({
       ...prev,
       [name]:
-        name === "date"
-          ? value
-          : name === "reference" || name === "issueOffice"
-          ? value
-          : Number(value),
+        name === "receiptQty" ||
+        name === "issueQty" ||
+        name === "balanceQty" ||
+        name === "daysToConsume"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -169,6 +179,8 @@ export default function StockCardForm({ id }: { id?: string }) {
       issueOffice: "",
       balanceQty: 0,
       daysToConsume: 0,
+      year: "",
+      month: "",
     });
 
     toast({
@@ -244,6 +256,8 @@ export default function StockCardForm({ id }: { id?: string }) {
         id: t.id,
         stock_card_id: stockCardId,
         date: t.date,
+        month: t.month,
+        year: t.year,
         reference: t.reference,
         receipt_qty: t.receiptQty,
         issue_qty: t.issueQty,
@@ -370,11 +384,13 @@ export default function StockCardForm({ id }: { id?: string }) {
           <CardTitle>Item Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="overflow-x-auto w-full">
+            <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Year</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead className="text-center">Receipt Qty.</TableHead>
                   <TableHead className="text-center">Issue Qty.</TableHead>
@@ -390,6 +406,8 @@ export default function StockCardForm({ id }: { id?: string }) {
                 {transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>{transaction.date}</TableCell>
+                    <TableCell>{transaction.month}</TableCell>
+                    <TableCell>{transaction.year}</TableCell>
                     <TableCell>{transaction.reference}</TableCell>
                     <TableCell className="text-center">
                       {transaction.receiptQty}
@@ -422,42 +440,95 @@ export default function StockCardForm({ id }: { id?: string }) {
                       name="date"
                       value={newTransaction.date}
                       onChange={handleTransactionChange}
+                      className="w-40"
                     />
                   </TableCell>
+
+                  {/* Month Dropdown */}
+                  <TableCell>
+                    <select
+                      name="month"
+                      value={newTransaction.month}
+                      onChange={handleTransactionChange}
+                      className="border rounded px-2 py-2 w-40"
+                    >
+                      {[
+                        "January",
+                        "February",
+                        "March",
+                        "April",
+                        "May",
+                        "June",
+                        "July",
+                        "August",
+                        "September",
+                        "October",
+                        "November",
+                        "December",
+                      ].map((month) => (
+                        <option key={month} value={month}>
+                          {month}
+                        </option>
+                      ))}
+                    </select>
+                  </TableCell>
+
+                  {/* Year Input */}
+                  <TableCell>
+                    <Input
+                      name="year"
+                      value={newTransaction.year}
+                      onChange={handleTransactionChange}
+                      placeholder="Year"
+                      className="w-32"
+                    />
+                  </TableCell>
+
+                  {/* Reference */}
                   <TableCell>
                     <Input
                       name="reference"
                       value={newTransaction.reference}
                       onChange={handleTransactionChange}
                       placeholder="Reference"
+                      className="w-40"
                     />
                   </TableCell>
+
+                  {/* Receipt Qty */}
                   <TableCell>
                     <Input
-                      type="number"
                       name="receiptQty"
                       value={newTransaction.receiptQty}
                       onChange={handleTransactionChange}
                       min="0"
+                      className="w-28"
                     />
                   </TableCell>
+
+                  {/* Issue Qty */}
                   <TableCell>
                     <Input
-                      type="number"
                       name="issueQty"
                       value={newTransaction.issueQty}
                       onChange={handleTransactionChange}
                       min="0"
+                      className="w-28"
                     />
                   </TableCell>
+
+                  {/* Office */}
                   <TableCell>
                     <Input
                       name="issueOffice"
                       value={newTransaction.issueOffice}
                       onChange={handleTransactionChange}
                       placeholder="Office"
+                      className="w-40"
                     />
                   </TableCell>
+
+                  {/* Balance Qty */}
                   <TableCell>
                     <Input
                       type="number"
@@ -465,8 +536,11 @@ export default function StockCardForm({ id }: { id?: string }) {
                       value={newTransaction.balanceQty}
                       onChange={handleTransactionChange}
                       min="0"
+                      className="w-28"
                     />
                   </TableCell>
+
+                  {/* Days to Consume */}
                   <TableCell>
                     <Input
                       type="number"
@@ -474,15 +548,18 @@ export default function StockCardForm({ id }: { id?: string }) {
                       value={newTransaction.daysToConsume}
                       onChange={handleTransactionChange}
                       min="0"
+                      className="w-32"
                     />
                   </TableCell>
+
+                  {/* Add Button */}
                   <TableCell className="text-center">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={addTransaction}
                     >
-                      <PlusCircle className="h-4 w-4" />
+                      <PlusCircle className="h-5 w-5" />
                     </Button>
                   </TableCell>
                 </TableRow>
