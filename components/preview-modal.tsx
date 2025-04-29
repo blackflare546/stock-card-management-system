@@ -239,10 +239,10 @@ export function PreviewModal({
                       {t.issueOffice}
                     </td>
                     <td className="border border-black p-1 text-center align-middle">
-                      {t.balanceQty}
+                      {t.balanceQty === 0 ? "" : t.balanceQty}
                     </td>
                     <td className="border border-black p-1 text-center align-middle">
-                      {t.daysToConsume}
+                      {t.daysToConsume === 0 ? "" : t.daysToConsume}
                     </td>
                   </tr>
                 ))}
