@@ -283,11 +283,13 @@ export default function StockCardView({ id }: { id: string }) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-[1000px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Year</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead className="text-center">Receipt Qty.</TableHead>
                   <TableHead className="text-center">Issue Qty.</TableHead>
@@ -298,28 +300,35 @@ export default function StockCardView({ id }: { id: string }) {
               </TableHeader>
               <TableBody>
                 {filteredTransactions.length > 0 ? (
-                  filteredTransactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>{tx.date}</TableCell>
-                      <TableCell>{tx.reference}</TableCell>
-                      <TableCell className="text-center">
-                        {tx.receiptQty}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {tx.issueQty}
-                      </TableCell>
-                      <TableCell>{tx.issueOffice}</TableCell>
-                      <TableCell className="text-center">
-                        {tx.balanceQty}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {tx.daysToConsume}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filteredTransactions.map((tx) => {
+                    const parsedDate = parse(tx.date, "yyyy-MM-dd", new Date());
+                    const month = monthNames[getMonth(parsedDate)];
+                    const year = getYear(parsedDate);
+                    return (
+                      <TableRow key={tx.id}>
+                        <TableCell>{tx.date}</TableCell>
+                        <TableCell>{month}</TableCell>
+                        <TableCell>{year}</TableCell>
+                        <TableCell>{tx.reference}</TableCell>
+                        <TableCell className="text-center">
+                          {tx.receiptQty}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {tx.issueQty}
+                        </TableCell>
+                        <TableCell>{tx.issueOffice}</TableCell>
+                        <TableCell className="text-center">
+                          {tx.balanceQty}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {tx.daysToConsume}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4">
+                    <TableCell colSpan={9} className="text-center py-4">
                       No transactions found.
                     </TableCell>
                   </TableRow>
