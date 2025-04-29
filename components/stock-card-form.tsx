@@ -1,12 +1,10 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -20,6 +18,8 @@ import { PlusCircle, Save, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { v4 as uuidv4 } from "uuid";
 
 interface ItemHeader {
   entityName: string;
@@ -41,55 +41,6 @@ interface ItemTransaction {
   balanceQty: number;
   daysToConsume: number;
 }
-
-// Mock data - in a real app, this would come from a database
-const mockItems = [
-  {
-    id: "1",
-    entityName: "Department of Education",
-    fundCluster: "General Fund",
-    item: "Ballpoint Pen",
-    stockNo: "S-001",
-    description: "Blue ballpoint pen, medium point",
-    unitOfMeasurement: "piece",
-    reorderPoint: "50",
-    currentBalance: 120,
-    lastUpdated: "2025-04-25",
-    transactions: [
-      {
-        id: "t1",
-        date: "2025-04-10",
-        reference: "PO-2025-001",
-        receiptQty: 200,
-        issueQty: 0,
-        issueOffice: "",
-        balanceQty: 200,
-        daysToConsume: 0,
-      },
-      {
-        id: "t2",
-        date: "2025-04-15",
-        reference: "REQ-2025-001",
-        receiptQty: 0,
-        issueQty: 50,
-        issueOffice: "Admin Office",
-        balanceQty: 150,
-        daysToConsume: 30,
-      },
-      {
-        id: "t3",
-        date: "2025-04-20",
-        reference: "REQ-2025-002",
-        receiptQty: 0,
-        issueQty: 30,
-        issueOffice: "HR Department",
-        balanceQty: 120,
-        daysToConsume: 20,
-      },
-    ],
-  },
-  // Other mock items...
-];
 
 export default function StockCardForm({ id }: { id?: string }) {
   const router = useRouter();
@@ -121,24 +72,68 @@ export default function StockCardForm({ id }: { id?: string }) {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load data if in edit mode
+  // Load stock card and transactions if editing
   useEffect(() => {
-    if (isEditMode) {
-      const item = mockItems.find((item) => item.id === id);
-      if (item) {
-        setItemHeader({
-          entityName: item.entityName,
-          fundCluster: item.fundCluster,
-          item: item.item,
-          stockNo: item.stockNo,
-          description: item.description,
-          unitOfMeasurement: item.unitOfMeasurement,
-          reorderPoint: item.reorderPoint,
+    const fetchData = async () => {
+      if (!id) return;
+
+      const { data: stockCard, error } = await supabase
+        .from("stock_cards")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error(error);
+        toast({
+          title: "Error",
+          description: "Failed to load stock card.",
+          variant: "destructive",
         });
-        setTransactions(item.transactions);
+        return;
       }
-    }
-  }, [id, isEditMode]);
+
+      if (stockCard) {
+        setItemHeader({
+          entityName: stockCard.entity_name,
+          fundCluster: stockCard.fund_cluster,
+          item: stockCard.item,
+          stockNo: stockCard.stock_no,
+          description: stockCard.description,
+          unitOfMeasurement: stockCard.unit_of_measurement,
+          reorderPoint: stockCard.reorder_point,
+        });
+
+        const { data: stockTransactions, error: transactionsError } =
+          await supabase
+            .from("stock_transactions")
+            .select("*")
+            .eq("stock_card_id", id);
+
+        if (transactionsError) {
+          console.error(transactionsError);
+          return;
+        }
+
+        if (stockTransactions) {
+          setTransactions(
+            stockTransactions.map((t) => ({
+              id: t.id,
+              date: t.date,
+              reference: t.reference,
+              receiptQty: t.receipt_qty,
+              issueQty: t.issue_qty,
+              issueOffice: t.issue_office,
+              balanceQty: t.balance_qty,
+              daysToConsume: t.days_to_consume,
+            }))
+          );
+        }
+      }
+    };
+
+    fetchData();
+  }, [id]);
 
   const handleHeaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -160,13 +155,12 @@ export default function StockCardForm({ id }: { id?: string }) {
 
   const addTransaction = () => {
     const transaction: ItemTransaction = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       ...newTransaction,
     };
 
     setTransactions([...transactions, transaction]);
 
-    // Reset form except for date
     setNewTransaction({
       date: newTransaction.date,
       reference: "",
@@ -184,13 +178,12 @@ export default function StockCardForm({ id }: { id?: string }) {
   };
 
   const removeTransaction = (id: string) => {
-    // Remove the transaction with the given ID
     const updatedTransactions = transactions.filter((t) => t.id !== id);
     setTransactions(updatedTransactions);
 
     toast({
       title: "Transaction removed",
-      description: "The transaction has been removed from the stock card.",
+      description: "The transaction has been removed.",
     });
   };
 
@@ -198,7 +191,7 @@ export default function StockCardForm({ id }: { id?: string }) {
     if (!itemHeader.item) {
       toast({
         title: "Missing information",
-        description: "Please fill in all required fields.",
+        description: "Please fill in required fields.",
         variant: "destructive",
       });
       return;
@@ -207,64 +200,79 @@ export default function StockCardForm({ id }: { id?: string }) {
     setIsSaving(true);
 
     try {
-      if (isEditMode) {
-        // Update logic (not included yet)
-        // I'll show you later if needed.
-      } else {
-        // 1. Insert into stock_cards
-        const { data: cardData, error: cardError } = await supabase
+      let stockCardId = id ?? uuidv4();
+
+      if (!id) {
+        const { error: insertError } = await supabase
           .from("stock_cards")
-          .insert([
-            {
-              entity_name: itemHeader.entityName,
-              fund_cluster: itemHeader.fundCluster,
-              item: itemHeader.item,
-              stock_no: itemHeader.stockNo,
-              description: itemHeader.description,
-              unit_of_measurement: itemHeader.unitOfMeasurement,
-              reorder_point: itemHeader.reorderPoint,
-            },
-          ])
-          .select()
-          .single();
+          .insert({
+            id: stockCardId,
+            entity_name: itemHeader.entityName,
+            fund_cluster: itemHeader.fundCluster,
+            item: itemHeader.item,
+            stock_no: itemHeader.stockNo,
+            description: itemHeader.description,
+            unit_of_measurement: itemHeader.unitOfMeasurement,
+            reorder_point: itemHeader.reorderPoint,
+          });
 
-        if (cardError) throw cardError;
+        if (insertError) throw insertError;
+      } else {
+        const { error: updateError } = await supabase
+          .from("stock_cards")
+          .update({
+            entity_name: itemHeader.entityName,
+            fund_cluster: itemHeader.fundCluster,
+            item: itemHeader.item,
+            stock_no: itemHeader.stockNo,
+            description: itemHeader.description,
+            unit_of_measurement: itemHeader.unitOfMeasurement,
+            reorder_point: itemHeader.reorderPoint,
+          })
+          .eq("id", id);
 
-        const stockCardId = cardData.id;
+        if (updateError) throw updateError;
 
-        // 2. Insert all transactions linked to this stock card
-        const { error: transactionError } = await supabase
+        // Delete old transactions
+        await supabase
           .from("stock_transactions")
-          .insert(
-            transactions.map((t) => ({
-              stock_card_id: stockCardId,
-              date: t.date,
-              reference: t.reference,
-              receipt_qty: t.receiptQty,
-              issue_qty: t.issueQty,
-              issue_office: t.issueOffice,
-              balance_qty: t.balanceQty,
-              days_to_consume: t.daysToConsume,
-            }))
-          );
-
-        if (transactionError) throw transactionError;
-
-        toast({
-          title: "Stock card created",
-          description: `${itemHeader.item} has been successfully added to your inventory.`,
-        });
-
-        setTimeout(() => {
-          router.push("/");
-        }, 500);
+          .delete()
+          .eq("stock_card_id", id);
       }
-    } catch (error: any) {
+
+      const transactionData = transactions.map((t) => ({
+        id: t.id,
+        stock_card_id: stockCardId,
+        date: t.date,
+        reference: t.reference,
+        receipt_qty: t.receiptQty,
+        issue_qty: t.issueQty,
+        issue_office: t.issueOffice,
+        balance_qty: t.balanceQty,
+        days_to_consume: t.daysToConsume,
+      }));
+
+      if (transactionData.length > 0) {
+        const { error: insertTransactionsError } = await supabase
+          .from("stock_transactions")
+          .insert(transactionData);
+
+        if (insertTransactionsError) throw insertTransactionsError;
+      }
+
+      toast({
+        title: isEditMode ? "Stock card updated" : "Stock card created",
+        description: `${itemHeader.item} has been saved.`,
+      });
+
+      setTimeout(() => {
+        router.push("/");
+      }, 500);
+    } catch (error) {
       console.error(error);
       toast({
         title: "Error",
-        description:
-          error.message ?? "There was a problem saving the stock card.",
+        description: "There was a problem saving the stock card.",
         variant: "destructive",
       });
     } finally {
