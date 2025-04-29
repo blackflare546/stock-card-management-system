@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Save, Trash2 } from "lucide-react";
+import { PlusCircle, Save, Trash2, Edit } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -40,14 +40,21 @@ interface ItemTransaction {
   receiptQty: number;
   issueQty: number;
   issueOffice: string;
-  balanceQty: number;
-  daysToConsume: number;
+  balanceQty: number | null;
+  daysToConsume: number | null;
 }
 
 export default function StockCardForm({ id }: { id?: string }) {
   const router = useRouter();
   const { toast } = useToast();
   const isEditMode = !!id;
+
+  const [editingTransactionId, setEditingTransactionId] = useState<
+    string | null
+  >(null);
+  const [editedTransaction, setEditedTransaction] = useState<
+    Partial<ItemTransaction>
+  >({});
 
   const [itemHeader, setItemHeader] = useState<ItemHeader>({
     entityName: "",
@@ -71,8 +78,8 @@ export default function StockCardForm({ id }: { id?: string }) {
     receiptQty: 0,
     issueQty: 0,
     issueOffice: "",
-    balanceQty: 0,
-    daysToConsume: 0,
+    balanceQty: null,
+    daysToConsume: null,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -294,6 +301,38 @@ export default function StockCardForm({ id }: { id?: string }) {
     }
   };
 
+  const startEditing = (transaction: ItemTransaction) => {
+    setEditingTransactionId(transaction.id);
+    setEditedTransaction(transaction);
+  };
+
+  const handleEditChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditedTransaction((prev) => ({
+      ...prev,
+      [name]:
+        name === "receiptQty" ||
+        name === "issueQty" ||
+        name === "balanceQty" ||
+        name === "daysToConsume"
+          ? Number(value)
+          : value,
+    }));
+  };
+
+  const updateTransaction = (id: string) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...editedTransaction } : t))
+    );
+    setEditingTransactionId(null);
+    toast({
+      title: "Transaction updated",
+      description: "The transaction has been updated successfully.",
+    });
+  };
+
   return (
     <div className="space-y-8">
       <Card>
@@ -405,34 +444,162 @@ export default function StockCardForm({ id }: { id?: string }) {
               <TableBody>
                 {transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell>{transaction.date}</TableCell>
-                    <TableCell>{transaction.month}</TableCell>
-                    <TableCell>{transaction.year}</TableCell>
-                    <TableCell>{transaction.reference}</TableCell>
-                    <TableCell className="text-center">
-                      {transaction.receiptQty}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {transaction.issueQty}
-                    </TableCell>
-                    <TableCell>{transaction.issueOffice}</TableCell>
-                    <TableCell className="text-center">
-                      {transaction.balanceQty}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {transaction.daysToConsume}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeTransaction(transaction.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {editingTransactionId === transaction.id ? (
+                      // Editable inputs when editing
+                      <>
+                        <TableCell>
+                          <Input
+                            type="date"
+                            name="date"
+                            value={editedTransaction.date || ""}
+                            onChange={(e) => handleEditChange(e)}
+                            className="w-40"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <select
+                            name="month"
+                            value={editedTransaction.month || ""}
+                            onChange={handleEditChange}
+                            className="border rounded px-2 py-2 w-40"
+                          >
+                            {[
+                              "January",
+                              "February",
+                              "March",
+                              "April",
+                              "May",
+                              "June",
+                              "July",
+                              "August",
+                              "September",
+                              "October",
+                              "November",
+                              "December",
+                            ].map((month) => (
+                              <option key={month} value={month}>
+                                {month}
+                              </option>
+                            ))}
+                          </select>
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            name="year"
+                            value={editedTransaction.year || ""}
+                            onChange={handleEditChange}
+                            className="w-32"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            name="reference"
+                            value={editedTransaction.reference || ""}
+                            onChange={handleEditChange}
+                            className="w-40"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            name="receiptQty"
+                            type="number"
+                            value={editedTransaction.receiptQty ?? 0}
+                            onChange={handleEditChange}
+                            className="w-28"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            name="issueQty"
+                            type="number"
+                            value={editedTransaction.issueQty ?? 0}
+                            onChange={handleEditChange}
+                            className="w-28"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            name="issueOffice"
+                            value={editedTransaction.issueOffice || ""}
+                            onChange={handleEditChange}
+                            className="w-40"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            name="balanceQty"
+                            type="number"
+                            value={editedTransaction.balanceQty ?? 0}
+                            onChange={handleEditChange}
+                            className="w-28"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            name="daysToConsume"
+                            type="number"
+                            value={editedTransaction.daysToConsume ?? 0}
+                            onChange={handleEditChange}
+                            className="w-32"
+                          />
+                        </TableCell>
+                        <TableCell className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => updateTransaction(transaction.id)}
+                          >
+                            Update
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingTransactionId(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </TableCell>
+                      </>
+                    ) : (
+                      // Normal display mode
+                      <>
+                        <TableCell>{transaction.date}</TableCell>
+                        <TableCell>{transaction.month}</TableCell>
+                        <TableCell>{transaction.year}</TableCell>
+                        <TableCell>{transaction.reference}</TableCell>
+                        <TableCell className="text-center">
+                          {transaction.receiptQty}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {transaction.issueQty}
+                        </TableCell>
+                        <TableCell>{transaction.issueOffice}</TableCell>
+                        <TableCell className="text-center">
+                          {transaction.balanceQty}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {transaction.daysToConsume}
+                        </TableCell>
+                        <TableCell className="flex space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEditing(transaction)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeTransaction(transaction.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </>
+                    )}
                   </TableRow>
                 ))}
+
                 <TableRow>
                   <TableCell>
                     <Input
@@ -533,7 +700,7 @@ export default function StockCardForm({ id }: { id?: string }) {
                     <Input
                       type="number"
                       name="balanceQty"
-                      value={newTransaction.balanceQty}
+                      value={newTransaction.balanceQty!}
                       onChange={handleTransactionChange}
                       min="0"
                       className="w-28"
@@ -545,7 +712,7 @@ export default function StockCardForm({ id }: { id?: string }) {
                     <Input
                       type="number"
                       name="daysToConsume"
-                      value={newTransaction.daysToConsume}
+                      value={newTransaction.daysToConsume!}
                       onChange={handleTransactionChange}
                       min="0"
                       className="w-32"
