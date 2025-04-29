@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -21,75 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, X } from "lucide-react";
 import { parse, getMonth, getYear } from "date-fns";
 import { PreviewModal } from "./preview-modal";
-
-// Mock data - in a real app, this would come from a database
-const mockItems = [
-  {
-    id: "1",
-    entityName: "Department of Education",
-    fundCluster: "General Fund",
-    item: "Ballpoint Pen",
-    stockNo: "S-001",
-    description: "Blue ballpoint pen, medium point",
-    unitOfMeasurement: "piece",
-    reorderPoint: "50",
-    currentBalance: 120,
-    lastUpdated: "2025-04-25",
-    transactions: [
-      {
-        id: "t1",
-        date: "2024-01-10",
-        reference: "PO-2024-001",
-        receiptQty: 200,
-        issueQty: 0,
-        issueOffice: "",
-        balanceQty: 200,
-        daysToConsume: 0,
-      },
-      {
-        id: "t2",
-        date: "2024-02-15",
-        reference: "REQ-2024-001",
-        receiptQty: 0,
-        issueQty: 50,
-        issueOffice: "Admin Office",
-        balanceQty: 150,
-        daysToConsume: 30,
-      },
-      {
-        id: "t3",
-        date: "2024-03-20",
-        reference: "REQ-2024-002",
-        receiptQty: 0,
-        issueQty: 30,
-        issueOffice: "HR Department",
-        balanceQty: 120,
-        daysToConsume: 20,
-      },
-      {
-        id: "t4",
-        date: "2025-01-05",
-        reference: "REQ-2025-001",
-        receiptQty: 0,
-        issueQty: 15,
-        issueOffice: "Finance Department",
-        balanceQty: 105,
-        daysToConsume: 15,
-      },
-      {
-        id: "t5",
-        date: "2025-04-25",
-        reference: "PO-2025-001",
-        receiptQty: 100,
-        issueQty: 0,
-        issueOffice: "",
-        balanceQty: 205,
-        daysToConsume: 0,
-      },
-    ],
-  },
-  // Other mock items...
-];
+import { supabase } from "@/lib/supabaseClient"; // adjust path as needed
 
 // Month names for the dropdown
 const monthNames = [
@@ -107,58 +39,140 @@ const monthNames = [
   "December",
 ];
 
+type Transaction = {
+  id: string;
+  date: string;
+  reference: string;
+  receiptQty: number;
+  issueQty: number;
+  issueOffice: string;
+  balanceQty: number;
+  daysToConsume: number;
+};
+
+type StockItem = {
+  id: string;
+  entityName: string;
+  fundCluster: string;
+  item: string;
+  stockNo: string;
+  description: string;
+  unitOfMeasurement: string;
+  reorderPoint: string;
+  currentBalance: number;
+  lastUpdated: string;
+  transactions: Transaction[];
+};
+
 export default function StockCardView({ id }: { id: string }) {
-  // Find the item with the matching ID
-  const item = mockItems.find((item) => item.id === id);
+  const [item, setItem] = useState<StockItem | null>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const years = useMemo(() => {
-    const uniqueYears = new Set<string>();
+  useEffect(() => {
+    const fetchStockCard = async () => {
+      setLoading(true);
 
-    mockItems.forEach((item) => {
-      if (item) {
-        item.transactions.forEach((transaction) => {
-          const date = parse(transaction.date, "yyyy-MM-dd", new Date());
-          const year = getYear(date).toString();
-          uniqueYears.add(year);
-        });
+      // 1) fetch the stock_card row
+      const { data: card, error: cardError } = await supabase
+        .from("stock_cards")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (cardError || !card) {
+        console.error("Error fetching stock_card:", cardError?.message);
+        setItem(null);
+        setLoading(false);
+        return;
       }
-    });
 
-    return Array.from(uniqueYears).sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
-  }, []);
+      // 2) fetch related transactions
+      const { data: txs, error: txError } = await supabase
+        .from("stock_transactions")
+        .select("*")
+        .eq("stock_card_id", id)
+        .order("date", { ascending: true });
 
-  // Filter transactions by selected month and year
+      if (txError) {
+        console.error("Error fetching transactions:", txError.message);
+      }
+
+      const mappedTxs: Transaction[] = (txs || []).map((t) => ({
+        id: t.id,
+        date: t.date,
+        reference: t.reference,
+        receiptQty: t.receipt_qty,
+        issueQty: t.issue_qty,
+        issueOffice: t.issue_office,
+        balanceQty: t.balance_qty,
+        daysToConsume: t.days_to_consume,
+      }));
+
+      // derive currentBalance & lastUpdated
+      let currentBalance = 0;
+      let lastUpdated = card.created_at.slice(0, 10); // default to created date
+      if (mappedTxs.length > 0) {
+        const lastTx = mappedTxs[mappedTxs.length - 1];
+        currentBalance = lastTx.balanceQty;
+        lastUpdated = lastTx.date;
+      }
+
+      setItem({
+        id: card.id,
+        entityName: card.entity_name,
+        fundCluster: card.fund_cluster,
+        item: card.item,
+        stockNo: card.stock_no,
+        description: card.description,
+        unitOfMeasurement: card.unit_of_measurement,
+        reorderPoint: card.reorder_point,
+        currentBalance,
+        lastUpdated,
+        transactions: mappedTxs,
+      });
+
+      setLoading(false);
+    };
+
+    fetchStockCard();
+  }, [id]);
+
+  // collect unique years for filter dropdown
+  const years = useMemo(() => {
+    if (!item) return [];
+    const ys = new Set(
+      item.transactions.map((tx) =>
+        getYear(parse(tx.date, "yyyy-MM-dd", new Date())).toString()
+      )
+    );
+    return Array.from(ys).sort((a, b) => b.localeCompare(a));
+  }, [item]);
+
+  // apply month/year filters
   const filteredTransactions = useMemo(() => {
     if (!item) return [];
-    return item.transactions.filter((transaction) => {
-      const date = parse(transaction.date, "yyyy-MM-dd", new Date());
-      const transactionMonth = (getMonth(date) + 1).toString(); // +1 because getMonth is 0-indexed
-      const transactionYear = getYear(date).toString();
-
-      const monthMatches =
-        selectedMonth === "all" || transactionMonth === selectedMonth;
-      const yearMatches =
-        selectedYear === "all" || transactionYear === selectedYear;
-
-      return monthMatches && yearMatches;
+    return item.transactions.filter((tx) => {
+      const date = parse(tx.date, "yyyy-MM-dd", new Date());
+      const mon = (getMonth(date) + 1).toString();
+      const yr = getYear(date).toString();
+      const okMonth = selectedMonth === "all" || mon === selectedMonth;
+      const okYear = selectedYear === "all" || yr === selectedYear;
+      return okMonth && okYear;
     });
   }, [item, selectedMonth, selectedYear]);
 
-  // Clear all filters
   const clearFilters = () => {
     setSelectedMonth("all");
     setSelectedYear("all");
   };
-
-  // Check if any filter is active
   const isFilterActive = selectedMonth !== "all" || selectedYear !== "all";
 
-  if (!item) {
+  if (loading) return <div className="text-center py-8">Loading…</div>;
+  if (!item)
     return <div className="text-center py-8">Stock card not found</div>;
-  }
 
   return (
     <div className="space-y-8">
@@ -177,7 +191,6 @@ export default function StockCardView({ id }: { id: string }) {
               <p className="font-medium">{item.fundCluster}</p>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
@@ -210,14 +223,16 @@ export default function StockCardView({ id }: { id: string }) {
                 </p>
                 <p className="font-medium">{item.currentBalance}</p>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Last Updated:</p>
+                <p className="font-medium">{item.lastUpdated}</p>
+              </div>
             </div>
           </div>
 
-          {/* Add the preview button */}
-          <div className="mt-6 flex justify-end space-x-2">
+          <div className="mt-6 flex justify-end">
             <Button variant="outline" onClick={() => setIsPreviewOpen(true)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Preview
+              <Eye className="mr-2 h-4 w-4" /> Preview
             </Button>
           </div>
         </CardContent>
@@ -226,16 +241,16 @@ export default function StockCardView({ id }: { id: string }) {
       <Card>
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <CardTitle>Transaction History</CardTitle>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap gap-2">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Month" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Months</SelectItem>
-                {monthNames.map((month, index) => (
-                  <SelectItem key={index + 1} value={(index + 1).toString()}>
-                    {month}
+                {monthNames.map((m, i) => (
+                  <SelectItem key={i} value={(i + 1).toString()}>
+                    {m}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -247,9 +262,9 @@ export default function StockCardView({ id }: { id: string }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Years</SelectItem>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>
-                    {year}
+                {years.map((y) => (
+                  <SelectItem key={y} value={y}>
+                    {y}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -278,36 +293,34 @@ export default function StockCardView({ id }: { id: string }) {
                   <TableHead className="text-center">Issue Qty.</TableHead>
                   <TableHead>Office</TableHead>
                   <TableHead className="text-center">Balance Qty.</TableHead>
-                  <TableHead className="text-center">
-                    No. of Days to Consume
-                  </TableHead>
+                  <TableHead className="text-center">Days to Consume</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTransactions.length > 0 ? (
-                  filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>{transaction.date}</TableCell>
-                      <TableCell>{transaction.reference}</TableCell>
+                  filteredTransactions.map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell>{tx.date}</TableCell>
+                      <TableCell>{tx.reference}</TableCell>
                       <TableCell className="text-center">
-                        {transaction.receiptQty}
+                        {tx.receiptQty}
                       </TableCell>
                       <TableCell className="text-center">
-                        {transaction.issueQty}
+                        {tx.issueQty}
                       </TableCell>
-                      <TableCell>{transaction.issueOffice}</TableCell>
+                      <TableCell>{tx.issueOffice}</TableCell>
                       <TableCell className="text-center">
-                        {transaction.balanceQty}
+                        {tx.balanceQty}
                       </TableCell>
                       <TableCell className="text-center">
-                        {transaction.daysToConsume}
+                        {tx.daysToConsume}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-4">
-                      No transactions found for the selected filters.
+                      No transactions found.
                     </TableCell>
                   </TableRow>
                 )}
@@ -317,7 +330,6 @@ export default function StockCardView({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      {/* Preview Modal */}
       {isPreviewOpen && (
         <PreviewModal
           isOpen={isPreviewOpen}
