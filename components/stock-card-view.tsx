@@ -159,11 +159,8 @@ export default function StockCardView({ id }: { id: string }) {
   const filteredTransactions = useMemo(() => {
     if (!item) return [];
     return item.transactions.filter((tx) => {
-      const date = parse(tx.date, "yyyy-MM-dd", new Date());
-      const mon = (getMonth(date) + 1).toString();
-      const yr = getYear(date).toString();
-      const okMonth = selectedMonth === "all" || mon === selectedMonth;
-      const okYear = selectedYear === "all" || yr === selectedYear;
+      const okMonth = selectedMonth === "all" || tx.month === selectedMonth;
+      const okYear = selectedYear === "all" || tx.year === selectedYear;
       return okMonth && okYear;
     });
   }, [item, selectedMonth, selectedYear]);
@@ -253,7 +250,7 @@ export default function StockCardView({ id }: { id: string }) {
               <SelectContent>
                 <SelectItem value="all">All Months</SelectItem>
                 {monthNames.map((m, i) => (
-                  <SelectItem key={i} value={(i + 1).toString()}>
+                  <SelectItem key={i} value={m}>
                     {m}
                   </SelectItem>
                 ))}
