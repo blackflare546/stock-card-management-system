@@ -42,6 +42,8 @@ const monthNames = [
 type Transaction = {
   id: string;
   date: string;
+  month: string;
+  year: string;
   reference: string;
   receiptQty: number;
   issueQty: number;
@@ -103,6 +105,8 @@ export default function StockCardView({ id }: { id: string }) {
       const mappedTxs: Transaction[] = (txs || []).map((t) => ({
         id: t.id,
         date: t.date,
+        month: t.month,
+        year: t.year,
         reference: t.reference,
         receiptQty: t.receipt_qty,
         issueQty: t.issue_qty,
@@ -301,14 +305,11 @@ export default function StockCardView({ id }: { id: string }) {
               <TableBody>
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map((tx) => {
-                    const parsedDate = parse(tx.date, "yyyy-MM-dd", new Date());
-                    const month = monthNames[getMonth(parsedDate)];
-                    const year = getYear(parsedDate);
                     return (
                       <TableRow key={tx.id}>
                         <TableCell>{tx.date}</TableCell>
-                        <TableCell>{month}</TableCell>
-                        <TableCell>{year}</TableCell>
+                        <TableCell>{tx.month}</TableCell>
+                        <TableCell>{tx.year}</TableCell>
                         <TableCell>{tx.reference}</TableCell>
                         <TableCell className="text-center">
                           {tx.receiptQty}
